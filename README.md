@@ -7,6 +7,17 @@ OpenPoke is a simplified, open-source take on [Interaction Company’s](https://
 - Trigger scheduler and background watchers for reminders and "important email" alerts.
 - Next.js web UI that proxies everything through the shared `.env`, so plugging in API keys is the only setup.
 
+## What this fork adds
+
+The full reasoning, evidence, and tradeoffs are in **[WRITEUP.md](WRITEUP.md)**. In short:
+
+1. **Agents don't overload the main assistant.** Poke sees the 20 most recently used agents plus a search tool instead of every agent ever made, finds agents by name regardless of case or punctuation, can't silently create duplicates, and asks the user instead of guessing when two agents fit equally.
+2. **An Activity panel** (the button next to Settings) shows what needs you, what's coming up, and what was actually done, built from records the code writes as each step happens rather than from the AI's own summary.
+3. **"Waiting on": Poke chases replies for you.** When you email someone, Poke waits for their reply; if none comes in 2 days, it drafts one nudge and asks you before sending. Listed in Activity, with Stop.
+4. **Emails wait for approval, enforced in code.** Sending, replying, and forwarding create a request you approve in chat ("yes, send it") or in the panel, which shows everyone it goes to, cc and bcc included. Each request sends at most once. Emails only to yourself skip approval, so scheduled summaries still work.
+
+Also fixed along the way: the default model (`anthropic/claude-sonnet-4`) was retired on OpenRouter, so every call failed; reminders could fire twice after a restart; and newer models looped on the `wait` tool until the step limit. Set `OPENPOKE_MODEL` in `.env` to use a different model.
+
 ## Requirements
 - Python 3.10+
 - Node.js 18+
@@ -72,6 +83,15 @@ OpenPoke is a simplified, open-source take on [Interaction Company’s](https://
 9. **Connect Gmail for email workflows.** With both services running, open [http://localhost:3000](http://localhost:3000), head to *Settings → Gmail*, and complete the Composio OAuth flow. This step is required for email drafting, replies, and the important-email monitor.
 
 The web app proxies API calls to the Python server using the values in `.env`, so keeping both processes running is required for end-to-end flows.
+
+## Tests
+
+```bash
+pip install pytest
+python -m pytest tests -q
+```
+
+The tests run without API keys or Gmail: model calls and email sending are replaced with fakes.
 
 ## Project Layout
 - `server/` – FastAPI application and agents
