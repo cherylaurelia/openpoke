@@ -39,6 +39,9 @@ def _env_int(name: str, fallback: int) -> int:
         return fallback
 
 
+DEFAULT_MODEL = os.getenv("OPENPOKE_MODEL", "anthropic/claude-sonnet-5.5")
+
+
 class Settings(BaseModel):
     """Application settings with lightweight env fallbacks."""
 
@@ -50,12 +53,13 @@ class Settings(BaseModel):
     server_host: str = Field(default=os.getenv("OPENPOKE_HOST", "0.0.0.0"))
     server_port: int = Field(default=_env_int("OPENPOKE_PORT", 8001))
 
-    # LLM model selection
-    interaction_agent_model: str = Field(default="anthropic/claude-sonnet-4")
-    execution_agent_model: str = Field(default="anthropic/claude-sonnet-4")
-    execution_agent_search_model: str = Field(default="anthropic/claude-sonnet-4")
-    summarizer_model: str = Field(default="anthropic/claude-sonnet-4")
-    email_classifier_model: str = Field(default="anthropic/claude-sonnet-4")
+    # LLM model selection. anthropic/claude-sonnet-4 was retired on OpenRouter, so the old
+    # default failed every call. OPENPOKE_MODEL swaps the model without a code change.
+    interaction_agent_model: str = Field(default=DEFAULT_MODEL)
+    execution_agent_model: str = Field(default=DEFAULT_MODEL)
+    execution_agent_search_model: str = Field(default=DEFAULT_MODEL)
+    summarizer_model: str = Field(default=DEFAULT_MODEL)
+    email_classifier_model: str = Field(default=DEFAULT_MODEL)
 
     # Credentials / integrations
     openrouter_api_key: Optional[str] = Field(default=os.getenv("OPENROUTER_API_KEY"))

@@ -8,6 +8,7 @@ import httpx
 from ..config import get_settings
 
 OpenRouterBaseURL = "https://openrouter.ai/api/v1"
+MAX_OUTPUT_TOKENS = 4096
 
 
 class OpenRouterError(RuntimeError):
@@ -61,6 +62,10 @@ async def request_chat_completion(
         "model": model,
         "messages": _build_messages(messages, system),
         "stream": False,
+        # Without a cap, OpenRouter reserves credit for the model's full output limit
+        # (65,536 tokens) on every call, which fails on low-balance keys. Replies here
+        # are short; 4,096 leaves room for long email drafts.
+        "max_tokens": MAX_OUTPUT_TOKENS,
     }
     if tools:
         payload["tools"] = tools
