@@ -165,13 +165,10 @@ sent nothing, 6 of 6 correct. The gate has 17 unit tests and follow-ups have 9.
 
 ## With another week
 
-1. Run the follow-up loop end to end with real people. So far the real-reply path has run
-   against fakes and demo data, and sending and Gmail search have run for real.
-2. Scale the routing evals to 500 to 1,000 agents, with insurance look-alikes and test cases
+1. Scale the routing evals to 500 to 1,000 agents, with insurance look-alikes and test cases
    written by someone who hasn't seen the code.
-3. Let users stop a task that's already running from the panel.
-4. Match replies to the thread rather than the sender, and have Poke write each nudge from the
+2. Match replies to the thread rather than the sender, and have Poke write each nudge from the
    thread.
-5. Before real users: auth, a database instead of JSON files, and a cap on each agent's history.
+3. Before real users: auth, a database instead of JSON files, and a cap on each agent's history.
 
 All 70 tests run without API keys: `python -m pytest tests -q`.
