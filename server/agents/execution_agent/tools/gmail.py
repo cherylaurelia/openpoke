@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable, Dict, List, Optional
 
+from server.services import approvals
 from server.services.execution import get_execution_agent_logs
 from server.services.gmail import execute_gmail_tool, get_active_gmail_user_id
 
@@ -516,16 +517,81 @@ def gmail_search_people(
     return _execute("GMAIL_SEARCH_PEOPLE", composio_user_id, arguments)
 
 
+# The tools that send email. Agents get gated versions; only approvals.approve() calls these.
+approvals.SENDERS.update({
+    "gmail_execute_draft": gmail_execute_draft,
+    "gmail_forward_email": gmail_forward_email,
+    "gmail_reply_to_thread": gmail_reply_to_thread,
+})
+
+
+def _own_email() -> str:
+    """The connected Gmail address, if already known (no network call). Empty if unknown."""
+    from server.services.gmail.client import _extract_email, _get_cached_profile
+
+    return (_extract_email(_get_cached_profile(get_active_gmail_user_id())) or "").lower()
+
+
+def _recipients(arguments: Dict[str, Any]) -> List[str]:
+    """Everyone the email goes to: To, cc, bcc and extra recipients."""
+    found = [arguments.get("recipient_email")]
+    for key in ("cc", "bcc", "extra_recipients"):
+        value = arguments.get(key) or []
+        found.extend([value] if isinstance(value, str) else value)
+    return [str(r) for r in found if r and str(r).strip()]  # unstripped: " me@x" isn't treated as me
+
+
+def _create_draft(**arguments: Any) -> Dict[str, Any]:
+    result = gmail_create_draft(**arguments)
+    if not approvals.result_error(result):
+        approvals.get_approval_store().remember_draft(
+            approvals.draft_ids(result), _recipients(arguments),
+            arguments.get("subject", ""), arguments.get("body", ""))
+    return result
+
+
+def _gated(agent_name: str, tool: str) -> Callable[..., Dict[str, Any]]:
+    """Ask for approval instead of sending, unless the email only goes to the user."""
+
+    def run(**arguments: Any) -> Dict[str, Any]:
+        arguments = {k: v for k, v in arguments.items() if v is not None}
+        store = approvals.get_approval_store()
+        if tool == "gmail_execute_draft":
+            # Look up the exact draft being sent. One we didn't see created has no known
+            # recipient, so it can never skip approval.
+            draft = store.draft(str(arguments.get("draft_id", "")))
+            to, subject, preview = draft.get("to", []), draft.get("subject", ""), draft.get("body", "")
+        else:
+            to = _recipients(arguments)
+            if tool == "gmail_reply_to_thread":
+                subject, preview = "Reply in thread", arguments.get("message_body", "")
+            else:
+                subject = f"Forward of message {arguments.get('message_id', '?')}"
+                preview = arguments.get("additional_text", "")
+        if to and {r.lower() for r in to} == {_own_email()}:
+            return approvals.SENDERS[tool](**arguments)  # only to the user: no approval needed
+        shown_to = ", ".join(to) or "(unknown recipient: check the draft in Gmail)"
+        pending = store.request(agent_name, tool, arguments, shown_to, subject, preview)
+        return {
+            "status": "awaiting_user_approval",
+            "approval_id": pending.id,
+            "note": "Nothing was sent. Sending needs the user's approval, which happens outside "
+            "your tools. Report that the email is ready and waiting for their approval.",
+        }
+
+    return run
+
+
 # Return Gmail tool callables
-def build_registry(agent_name: str) -> Dict[str, Callable[..., Any]]:  # noqa: ARG001
-    """Return Gmail tool callables."""
-    
+def build_registry(agent_name: str) -> Dict[str, Callable[..., Any]]:
+    """Return Gmail tool callables. Sending tools are gated behind the user's approval."""
+
     return {
-        "gmail_create_draft": gmail_create_draft,
-        "gmail_execute_draft": gmail_execute_draft,
+        "gmail_create_draft": _create_draft,
+        "gmail_execute_draft": _gated(agent_name, "gmail_execute_draft"),
         "gmail_delete_draft": gmail_delete_draft,
-        "gmail_forward_email": gmail_forward_email,
-        "gmail_reply_to_thread": gmail_reply_to_thread,
+        "gmail_forward_email": _gated(agent_name, "gmail_forward_email"),
+        "gmail_reply_to_thread": _gated(agent_name, "gmail_reply_to_thread"),
         "gmail_get_contacts": gmail_get_contacts,
         "gmail_get_people": gmail_get_people,
         "gmail_list_drafts": gmail_list_drafts,
