@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 
 from .agent import build_system_prompt, prepare_message_with_history
-from .tools import ToolResult, get_tool_schemas, handle_tool_call
+from .tools import ToolResult, get_tool_schemas, handle_tool_call, set_user_turn
 from ...config import get_settings
 from ...services.conversation import get_conversation_log, get_working_memory_log
 from ...openrouter_client import request_chat_completion
@@ -68,6 +68,7 @@ class InteractionAgentRuntime:
         try:
             transcript_before = self._load_conversation_transcript()
             self.conversation_log.record_user_message(user_message)
+            set_user_turn(user_message, transcript_before)
 
             system_prompt = build_system_prompt()
             messages = prepare_message_with_history(
@@ -103,6 +104,7 @@ class InteractionAgentRuntime:
         try:
             transcript_before = self._load_conversation_transcript()
             self.conversation_log.record_agent_message(agent_message)
+            set_user_turn(None)  # an agent report names its agent; no guessing to check
 
             system_prompt = build_system_prompt()
             messages = prepare_message_with_history(
@@ -182,6 +184,12 @@ class InteractionAgentRuntime:
                     "content": self._format_tool_result(tool_call, result),
                 }
                 messages.append(tool_message)
+
+            # A step that only waits means Poke has nothing more to do this turn. Without this,
+            # newer models call wait again and again, paying for a full model call each time,
+            # until the iteration limit turns the turn into an error.
+            if all(call.name == "wait" for call in parsed_tool_calls):
+                break
         else:
             raise RuntimeError("Reached tool iteration limit without final response")
 
