@@ -26,8 +26,8 @@ Also fixed along the way: the default model (`anthropic/claude-sonnet-4`) was re
 ## Quickstart
 1. **Clone and enter the repo.**
    ```bash
-   git clone https://github.com/shlokkhemani/OpenPoke
-   cd OpenPoke
+   git clone https://github.com/cherylaurelia/openpoke
+   cd openpoke
    ```
 2. **Create a shared env file.** Copy the template and open it in your editor:
    ```bash
@@ -92,6 +92,8 @@ python -m pytest tests -q
 ```
 
 The tests run without API keys or Gmail: model calls and email sending are replaced with fakes.
+
+The live routing evals, which call the real model and compare against the original code, are in [`evals/`](evals/README.md).
 
 ## Project Layout
 - `server/` – FastAPI application and agents
