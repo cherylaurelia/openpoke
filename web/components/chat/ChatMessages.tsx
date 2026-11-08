@@ -30,7 +30,9 @@ export function ChatMessages({ messages, isWaitingForResponse, scrollContainerRe
                 isDraft && 'whitespace-pre-wrap',
               )}
             >
-              <span className={isDraft ? 'block whitespace-pre-wrap' : 'whitespace-pre-wrap'}>{message.text}</span>
+              <span className={isDraft ? 'block whitespace-pre-wrap' : 'whitespace-pre-wrap'}>
+                {isUser || isDraft ? message.text : withBold(message.text)}
+              </span>
             </div>
           </div>
         );
@@ -39,6 +41,12 @@ export function ChatMessages({ messages, isWaitingForResponse, scrollContainerRe
       {isWaitingForResponse && <TypingIndicator />}
     </div>
   );
+}
+
+// The model writes **bold** out of habit; show it bold instead of as raw asterisks. Drafts are
+// left as typed, since they show the exact email text.
+function withBold(text: string) {
+  return text.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part));
 }
 
 function TypingIndicator() {
