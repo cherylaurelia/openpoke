@@ -9,14 +9,14 @@ OpenPoke is a simplified, open-source take on [Interaction Company’s](https://
 
 ## What this fork adds
 
-The full reasoning, evidence, and tradeoffs are in **[WRITEUP.md](WRITEUP.md)**. In short:
+The design, evidence and tradeoffs are in [WRITEUP.md](WRITEUP.md). In short:
 
-1. **Agents don't overload the main assistant.** Poke sees the 20 most recently used agents plus a search tool instead of every agent ever made, finds agents by name regardless of case or punctuation, can't silently create duplicates, and asks the user instead of guessing when two agents fit equally.
-2. **An Activity panel** (the button next to Settings) shows what needs you, what's coming up, and what was actually done, built from records the code writes as each step happens rather than from the AI's own summary.
-3. **"Waiting on": Poke chases replies for you.** When you email someone, Poke waits for their reply; if none comes in 2 days, it drafts one nudge and asks you before sending. Listed in Activity, with Stop.
-4. **Emails wait for approval, enforced in code.** Sending, replying, and forwarding create a request you approve in chat ("yes, send it") or in the panel, which shows everyone it goes to, cc and bcc included. Each request sends at most once. Emails only to yourself skip approval, so scheduled summaries still work.
+1. Agent overload: Poke sees the 20 most recently used agents plus a search tool instead of every agent ever made. Names match regardless of case or punctuation, typos can't create duplicates, and Poke asks instead of guessing when two agents fit equally.
+2. Activity panel (the button next to Settings): what needs approval, emails with no reply yet, upcoming reminders, and each task's steps, built from records the code writes rather than from the model's summary.
+3. Follow-ups: if someone hasn't answered your email in 2 days, Poke drafts one short nudge and asks before sending it. These are listed in Activity, with Stop.
+4. Approval in code: sending, replying and forwarding create a request you approve in chat ("yes, send it" or the Send email button) or in the panel, which shows every recipient including cc and bcc. Each request sends at most once. Emails only to yourself skip approval, so scheduled summaries still work.
 
-Also fixed along the way: the default model (`anthropic/claude-sonnet-4`) was retired on OpenRouter, so every call failed; reminders could fire twice after a restart; and newer models looped on the `wait` tool until the step limit. Set `OPENPOKE_MODEL` in `.env` to use a different model.
+Also fixed: the default model (`anthropic/claude-sonnet-4`) was retired on OpenRouter, so every call failed. A restart mid-run fired reminders twice, a hung Gmail call froze the server, and newer models looped on the `wait` tool until the step limit. Set `OPENPOKE_MODEL` in `.env` to use a different model.
 
 ## Requirements
 - Python 3.10+
