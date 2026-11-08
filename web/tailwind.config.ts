@@ -23,7 +23,9 @@ const config: Config = {
       }
     },
   },
-  darkMode: 'class'
+  darkMode: 'class',
+  // Hover styles only on devices that can hover, so a tap on a phone doesn't leave them stuck.
+  future: { hoverOnlyWhenSupported: true },
 };
 
 export default config;

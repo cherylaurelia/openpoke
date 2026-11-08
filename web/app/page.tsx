@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import SettingsModal, { useSettings } from '@/components/SettingsModal';
+import { ActivityPanel } from '@/components/activity/ActivityPanel';
+import { useActivity } from '@/components/activity/useActivity';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { ChatMessages } from '@/components/chat/ChatMessages';
@@ -47,6 +49,10 @@ export default function Page() {
     items: messages,
     isWaiting: isWaitingForResponse,
   });
+  const [activityOpen, setActivityOpen] = useState(false);
+  const activity = useActivity(activityOpen);
+  const toggleActivity = useCallback(() => setActivityOpen(v => !v), []);
+  const closeActivity = useCallback(() => setActivityOpen(false), []);
   const openSettings = useCallback(() => setOpen(true), [setOpen]);
   const closeSettings = useCallback(() => setOpen(false), [setOpen]);
 
@@ -229,9 +235,16 @@ export default function Page() {
 
   return (
     <main className="chat-bg min-h-screen p-4 sm:p-6">
-      <div className="chat-wrap flex flex-col">
-        <ChatHeader onOpenSettings={openSettings} onClearHistory={triggerClearHistory} />
+      <div className={activityOpen ? 'mx-auto flex w-full max-w-5xl flex-col' : 'chat-wrap flex flex-col'}>
+        <ChatHeader
+          onOpenSettings={openSettings}
+          onClearHistory={triggerClearHistory}
+          onToggleActivity={toggleActivity}
+          activityOpen={activityOpen}
+          problems={activity.problems}
+        />
 
+        <div className={activityOpen ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-4' : ''}>
         <div className="card flex-1 overflow-hidden">
           <ChatMessages
             messages={messages}
@@ -251,6 +264,14 @@ export default function Page() {
               onSubmit={handleSubmit}
             />
           </div>
+        </div>
+
+        {activityOpen && (
+          // A side panel on wide screens; a full-screen sheet on phones.
+          <div className="fixed inset-0 z-40 bg-[#F5F5F7] p-3 lg:static lg:z-auto lg:h-[calc(70vh+73px)] lg:bg-transparent lg:p-0">
+            <ActivityPanel activity={activity} onClose={closeActivity} />
+          </div>
+        )}
         </div>
 
         <SettingsModal open={open} onClose={closeSettings} settings={settings} onSave={setSettings} />
