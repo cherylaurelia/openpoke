@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from ..models import ChatHistoryClearResponse, ChatHistoryResponse, ChatRequest
-from ..services import get_conversation_log, get_trigger_service, handle_chat_request
+from ..services import approvals, followups, get_conversation_log, get_trigger_service, handle_chat_request
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -41,6 +41,10 @@ def clear_history() -> ChatHistoryClearResponse:
     # Clear stored triggers
     trigger_service = get_trigger_service()
     trigger_service.clear_all()
+
+    # Clear emails waiting for approval: their tasks are gone, so nothing should send them
+    approvals.get_approval_store().clear()
+    followups.get_follow_up_store().clear()
 
     return ChatHistoryClearResponse()
 
