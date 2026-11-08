@@ -153,7 +153,7 @@ export function useActivity(open: boolean) {
     (reminders?.filter(r => r.state === 'didnt_finish').length ?? 0) +
     (tasks?.filter(t => t.status === 'failed' && logTime(t.last_activity) > seenAt).length ?? 0);
 
-  return { tasks, reminders, approvals, followUps, error, problems, setReminder, stopFollowUp, decide };
+  return { tasks, reminders, approvals, followUps, error, problems, refresh, setReminder, stopFollowUp, decide };
 }
 
 export function useTaskDetail(id: string | null) {

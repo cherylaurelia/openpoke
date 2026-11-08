@@ -8,6 +8,7 @@ import { ChatHeader } from '@/components/chat/ChatHeader';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { ChatMessages } from '@/components/chat/ChatMessages';
 import { ErrorBanner } from '@/components/chat/ErrorBanner';
+import { PendingSends } from '@/components/chat/PendingSends';
 import { useAutoScroll } from '@/components/chat/useAutoScroll';
 import type { ChatBubble } from '@/components/chat/types';
 
@@ -52,6 +53,12 @@ export default function Page() {
   const [activityOpen, setActivityOpen] = useState(false);
   const activity = useActivity(activityOpen);
   const toggleActivity = useCallback(() => setActivityOpen(v => !v), []);
+  const openActivity = useCallback(() => setActivityOpen(true), []);
+  // A new chat message can mean a new email waiting for approval: check now, not at the next slow poll.
+  const { refresh: refreshActivity } = activity;
+  useEffect(() => {
+    void refreshActivity();
+  }, [messages.length, refreshActivity]);
   const closeActivity = useCallback(() => setActivityOpen(false), []);
   const openSettings = useCallback(() => setOpen(true), [setOpen]);
   const closeSettings = useCallback(() => setOpen(false), [setOpen]);
@@ -255,6 +262,8 @@ export default function Page() {
 
           <div className="border-t border-gray-200 p-3">
             {error && <ErrorBanner message={error} onDismiss={clearError} />}
+
+            <PendingSends approvals={activity.approvals} onDecide={activity.decide} onOpenActivity={openActivity} />
 
             <ChatInput
               value={input}

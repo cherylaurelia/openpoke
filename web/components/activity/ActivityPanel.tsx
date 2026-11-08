@@ -134,7 +134,7 @@ function day(iso: string): string {
 const FOLLOW_UP_ORDER = { nudge_ready: 0, waiting: 1, nudged: 1, replied: 2 } as const;
 
 function followUpLine(f: FollowUp): string {
-  if (f.status === 'nudge_ready') return 'No reply yet. A short nudge is ready in Needs you.';
+  if (f.status === 'nudge_ready') return 'A short nudge is ready in Needs you.';
   if (f.status === 'nudged') return `Nudged. Stops waiting ${day(f.check_in)}.`;
   if (f.status === 'replied') return f.reply ? `Replied: “${f.reply}”` : 'Replied.';
   return `Sent ${when(f.since)}. No reply by ${day(f.check_in)} and a nudge is drafted.`;
@@ -145,7 +145,7 @@ function WaitingOn({ followUps, onStop }: { followUps: FollowUp[] | null; onStop
   const [busy, setBusy] = useState<string | null>(null);
   return (
     <section className="mb-6">
-      <SectionTitle>Waiting on</SectionTitle>
+      <SectionTitle>No reply yet</SectionTitle>
       {followUps === null ? (
         <Loading />
       ) : followUps.length === 0 ? (
