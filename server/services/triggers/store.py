@@ -101,6 +101,19 @@ class TriggerStore:
             ).fetchall()
         return [self._row_to_record(row) for row in rows]
 
+    def fetch_by_id(self, trigger_id: int) -> Optional[TriggerRecord]:
+        with self._lock, self._connect() as conn:
+            row = conn.execute("SELECT * FROM triggers WHERE id = ?", (trigger_id,)).fetchone()
+        return self._row_to_record(row) if row else None
+
+    def list_all(self) -> List[TriggerRecord]:
+        """Every trigger across agents, soonest first (for the Activity panel)."""
+        with self._lock, self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM triggers ORDER BY next_trigger IS NULL, next_trigger"
+            ).fetchall()
+        return [self._row_to_record(row) for row in rows]
+
     def fetch_due(
         self, agent_name: Optional[str], before_iso: str
     ) -> List[TriggerRecord]:

@@ -34,6 +34,11 @@ class TriggerScheduler:
         self._in_flight: Set[int] = set()
         self._lock = asyncio.Lock()
 
+    @property
+    def running(self) -> Set[int]:
+        """Ids of reminders whose agent is running right now."""
+        return set(self._in_flight)
+
     async def start(self) -> None:
         async with self._lock:
             if self._task and not self._task.done():
@@ -80,6 +85,7 @@ class TriggerScheduler:
     async def _execute_trigger(self, trigger: TriggerRecord) -> None:
         try:
             fired_at = _utc_now()
+            self._service.start_run(trigger, fired_at=fired_at)  # claim first: no re-fire on restart
             instructions = self._format_instructions(trigger, fired_at)
             logger.info(
                 "Dispatching trigger",
@@ -124,11 +130,12 @@ class TriggerScheduler:
                 "error": error,
             },
         )
-        self._service.record_failure(trigger, error)
         if trigger.recurrence_rule:
             self._service.schedule_next_occurrence(trigger, fired_at=fired_at)
         else:
             self._service.clear_next_fire(trigger.id, agent_name=trigger.agent_name)
+        # After rescheduling, which clears last_error, so the error survives for the panel.
+        self._service.record_failure(trigger, error)
 
     def _format_instructions(self, trigger: TriggerRecord, fired_at: datetime) -> str:
         scheduled_for = trigger.next_trigger or _isoformat(fired_at)

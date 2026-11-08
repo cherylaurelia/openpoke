@@ -23,6 +23,9 @@ from .utils import (
 MISSED_TRIGGER_GRACE_PERIOD = timedelta(minutes=5)
 
 
+INTERRUPTED = "Didn't finish: the server stopped while it was running"
+
+
 class TriggerService:
     """High-level trigger management with recurrence awareness."""
 
@@ -169,6 +172,11 @@ class TriggerService:
         elif schedule_inputs_changed:
             fields["recurrence_rule"] = stored_recurrence
 
+        if normalized_status == "completed":
+            # A cancelled reminder must not show a next run: seen live, the agent read the
+            # leftover date and told the user it couldn't promise the reminder wouldn't fire.
+            fields["next_trigger"] = None
+
         if clear_error:
             fields["last_error"] = None
         elif last_error is not None:
@@ -182,6 +190,16 @@ class TriggerService:
 
     def list_triggers(self, *, agent_name: str) -> List[TriggerRecord]:
         return self._store.list_for_agent(agent_name)
+
+    def list_all_triggers(self) -> List[TriggerRecord]:
+        return self._store.list_all()
+
+    def set_status(self, trigger_id: int, status: str) -> Optional[TriggerRecord]:
+        """Pause (cancel, keeping the record) or resume a trigger by id alone, for the panel."""
+        record = self._store.fetch_by_id(trigger_id)
+        if record is None:
+            return None
+        return self.update_trigger(trigger_id, agent_name=record.agent_name, status=status)
 
     def get_due_triggers(
         self, *, before: datetime, agent_name: Optional[str] = None
@@ -197,6 +215,28 @@ class TriggerService:
                 "status": "completed",
                 "next_trigger": None,
                 "last_error": None,
+            },
+        )
+
+    def start_run(self, trigger: TriggerRecord, *, fired_at: datetime) -> None:
+        """Claim this occurrence in the database before the agent runs.
+
+        The scheduler used to move a trigger forward only after its agent finished, so a
+        restart mid-run (a deploy, a crash, a --reload) fired it again: a reminder email
+        could go out twice. Now the next occurrence is written first. If the process dies
+        mid-run, the trigger shows as interrupted instead of running again: at most once,
+        with a visible gap a person can rerun, rather than a silent duplicate.
+        """
+        next_fire = None
+        if trigger.recurrence_rule:
+            tz = resolve_timezone(trigger.timezone)
+            next_fire = self._compute_next_after(trigger.recurrence_rule, fired_at, tz)
+        self._store.update(
+            trigger.id,
+            trigger.agent_name,
+            {
+                "next_trigger": to_storage_timestamp(next_fire) if next_fire else None,
+                "last_error": INTERRUPTED,
             },
         )
 
