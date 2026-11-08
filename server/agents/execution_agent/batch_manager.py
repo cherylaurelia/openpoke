@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 
 from .runtime import ExecutionAgentRuntime, ExecutionResult
 from ...logging_config import logger
+from ...services.execution import get_agent_roster, get_execution_agent_logs
 
 
 @dataclass
@@ -56,6 +57,9 @@ class ExecutionBatchManager:
             request_id = str(uuid.uuid4())
 
         batch_id = await self._register_pending_execution(agent_name, instructions, request_id)
+        # Any run counts as use, including reminder runs, so an agent that just reported
+        # back is in Poke's recent list when the user replies to it.
+        get_agent_roster().touch(agent_name)
 
         try:
             logger.info(f"[{agent_name}] Execution started")
@@ -68,6 +72,10 @@ class ExecutionBatchManager:
             logger.info(f"[{agent_name}] Execution finished: {status}")
         except asyncio.TimeoutError:
             logger.error(f"[{agent_name}] Execution timed out after {self.timeout_seconds}s")
+            # The cancelled run never logs its own end, so record it here for the Activity panel.
+            get_execution_agent_logs().record_agent_response(
+                agent_name, f"Error: Timed out after {self.timeout_seconds} seconds"
+            )
             result = ExecutionResult(
                 agent_name=agent_name,
                 success=False,

@@ -105,7 +105,7 @@ class ExecutionAgentRuntime:
                     else:
                         error_detail = result.get("error") if isinstance(result, dict) else str(result)
                         logger.warning(f"[{self.agent.name}] Tool {tool_name} failed: {error_detail}")
-                        record_payload = error_detail
+                        record_payload = f"Error: {error_detail}"
 
                     self.agent.record_tool_execution(
                         tool_name,

@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
-from ...services.execution import get_execution_agent_logs
+from ...services.execution import get_agent_roster, get_execution_agent_logs
 from ...logging_config import logger
 
 
@@ -52,7 +52,8 @@ class ExecutionAgent:
     # Generate system prompt template with agent name and purpose derived from name
     def build_system_prompt(self) -> str:
         """Build the system prompt for this agent."""
-        agent_purpose = f"Handle tasks related to: {self.name}"
+        record = get_agent_roster().get(self.name)
+        agent_purpose = (record and record.description) or f"Handle tasks related to: {self.name}"
 
         return SYSTEM_PROMPT_TEMPLATE.format(
             agent_name=self.name,

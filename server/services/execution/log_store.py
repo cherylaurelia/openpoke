@@ -130,7 +130,9 @@ class ExecutionAgentLogStore:
         path = self._log_path(agent_name)
         with self._lock_for(agent_name):
             try:
-                lines = path.read_text(encoding="utf-8").splitlines()
+                # Not splitlines(): it also splits on characters like U+2028 that pasted text
+                # can contain, which would cut an entry in half and drop it.
+                lines = path.read_text(encoding="utf-8").split("\n")
             except FileNotFoundError:
                 lines = []
             except Exception as exc:
